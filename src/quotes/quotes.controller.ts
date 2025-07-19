@@ -7,6 +7,8 @@ import {
   Put,
   Delete,
   ParseIntPipe,
+  InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { QuotesService } from './quotes.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -28,8 +30,12 @@ export class QuotesController {
   create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateQuoteDto,
-  ) {
-    return this.quotesService.create(userId, dto);
+  ): Quote {
+    try {
+      return this.quotesService.create(userId, dto);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to create quote');
+    }
   }
 
   @Get()
@@ -39,8 +45,12 @@ export class QuotesController {
     type: Quote,
     isArray: true,
   })
-  getAll() {
-    return this.quotesService.findAll();
+  getAll(): Quote[] {
+    try {
+      return this.quotesService.findAll();
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to fetch quotes');
+    }
   }
 
   @Get('user/:userId')
@@ -54,14 +64,41 @@ export class QuotesController {
     return this.quotesService.findByUser(userId);
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a quote by ID' })
+  @ApiOkResponse({
+    description: 'A quote',
+    type: Quote,
+  })
+  findOne(@Param('id') id: number): Quote {
+    try {
+      const quote = this.quotesService.findOne(id);
+      if (!quote) throw new NotFoundException(`Quote with ID ${id} not found`);
+      return quote;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to fetch quote');
+    }
+  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Update a quote' })
   @ApiOkResponse({
     description: 'An updated quote',
     type: Quote,
   })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateQuoteDto) {
-    return this.quotesService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateQuoteDto,
+  ): Quote {
+    try {
+      const updatedQuote = this.quotesService.update(id, dto);
+      if (!updatedQuote) throw new NotFoundException('Quote not found');
+      return updatedQuote;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to update quote');
+    }
   }
 
   @Delete(':id')
@@ -69,8 +106,13 @@ export class QuotesController {
   @ApiOkResponse({
     description: 'Quote deleted successfully',
   })
-  delete(@Param('id', ParseIntPipe) id: number) {
-    this.quotesService.delete(id);
-    return { message: 'Quote deleted successfully' };
+  delete(@Param('id', ParseIntPipe) id: number): { message: string } {
+    try {
+      this.quotesService.delete(id);
+      return { message: 'Quote deleted successfully' };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to delete quote');
+    }
   }
 }

@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -29,7 +30,11 @@ export class UsersController {
     isArray: true,
   })
   findAll(): User[] {
-    return this.usersService.findAll();
+    try {
+      return this.usersService.findAll();
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to fetch users');
+    }
   }
 
   @Get('with-quotes')
@@ -39,8 +44,31 @@ export class UsersController {
     isArray: true,
   })
   @ApiOperation({ summary: 'Get all users with their quotes' })
-  findAllWithQuotes() {
-    return this.usersService.findAllWithQuotes();
+  findAllWithQuotes(): UserWithQuotes[] {
+    try {
+      return this.usersService.findAllWithQuotes();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to fetch users with quotes',
+      );
+    }
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a user by ID' })
+  @ApiOkResponse({
+    description: 'A user',
+    type: User,
+  })
+  findOne(@Param('id') id: number): User {
+    try {
+      const user = this.usersService.findOne(id);
+      if (!user) throw new NotFoundException(`User with ID ${id} not found`);
+      return user;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to fetch user');
+    }
   }
 
   @Post()
@@ -50,7 +78,11 @@ export class UsersController {
     type: User,
   })
   create(@Body() createUserDto: CreateUserDto): User {
-    return this.usersService.create(createUserDto);
+    try {
+      return this.usersService.create(createUserDto);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to create user');
+    }
   }
 
   @Put(':id')
@@ -63,9 +95,14 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
   ): User {
-    const updatedUser = this.usersService.update(id, updateUserDto);
-    if (!updatedUser) throw new NotFoundException('User not found');
-    return updatedUser;
+    try {
+      const updatedUser = this.usersService.update(id, updateUserDto);
+      if (!updatedUser) throw new NotFoundException('User not found');
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to update user');
+    }
   }
 
   @Delete(':id')
@@ -75,8 +112,13 @@ export class UsersController {
     type: User,
   })
   delete(@Param('id', ParseIntPipe) id: number): { message: string } {
-    const deleted = this.usersService.delete(id);
-    if (!deleted) throw new NotFoundException('User not found');
-    return { message: 'User deleted successfully' };
+    try {
+      const deleted = this.usersService.delete(id);
+      if (!deleted) throw new NotFoundException('User not found');
+      return { message: 'User deleted successfully' };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to delete user');
+    }
   }
 }
