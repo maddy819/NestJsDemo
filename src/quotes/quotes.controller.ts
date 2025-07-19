@@ -1,0 +1,76 @@
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Put,
+  Delete,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { QuotesService } from './quotes.service';
+import { CreateQuoteDto } from './dto/create-quote.dto';
+import { UpdateQuoteDto } from './dto/update-quote.dto';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Quote } from './entities/quote.entity';
+
+@ApiTags('quotes')
+@Controller('quotes')
+export class QuotesController {
+  constructor(private readonly quotesService: QuotesService) {}
+
+  @Post(':userId')
+  @ApiOperation({ summary: 'Create a new quote' })
+  @ApiOkResponse({
+    description: 'A newly created quote',
+    type: Quote,
+  })
+  create(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() dto: CreateQuoteDto,
+  ) {
+    return this.quotesService.create(userId, dto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all quotes' })
+  @ApiOkResponse({
+    description: 'List of quotes',
+    type: Quote,
+    isArray: true,
+  })
+  getAll() {
+    return this.quotesService.findAll();
+  }
+
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Get all quotes by a user' })
+  @ApiOkResponse({
+    description: 'List of quotes by user',
+    type: Quote,
+    isArray: true,
+  })
+  getByUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.quotesService.findByUser(userId);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update a quote' })
+  @ApiOkResponse({
+    description: 'An updated quote',
+    type: Quote,
+  })
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateQuoteDto) {
+    return this.quotesService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a quote' })
+  @ApiOkResponse({
+    description: 'Quote deleted successfully',
+  })
+  delete(@Param('id', ParseIntPipe) id: number) {
+    this.quotesService.delete(id);
+    return { message: 'Quote deleted successfully' };
+  }
+}
